@@ -8,6 +8,8 @@ output: html_notebook
 library(dplyr)
 library(pollster)
 library(ggplot2)
+library(reshape2)
+library(forcats)
 ```
 
 
@@ -16,7 +18,7 @@ library(ggplot2)
 # Urban/Rural: Toilet Type
 #hv025:Rural/Urban, hv005: HH weight
 
-nfhs6_hh_wash%>%
+nfhs5_hh_wash%>%
   mutate(toilet_type=case_when(hv205 == 11 ~ "Sewer",
                                hv205 == 12 ~ "Septic",
                                hv205 %in% c(13,21,22,23) ~ "Pit",
@@ -34,19 +36,45 @@ crosstab(x=hv025, y=toilet_type, weight = hv005,format = "long",unwt_n = TRUE)%>
               position = position_stack(vjust=0.5),size=4,color="black")
 ```
 
-
-
-
 ```{r}
-#State and Urban/Rural Toilet type
-nfhs6_hh_wash%>%
+nfhs5_hh_wash%>%
   mutate(toilet_type=case_when(hv205 == 11 ~ "Sewer",
                                hv205 == 12 ~ "Septic",
                                hv205 %in% c(13,21,22,23) ~ "Pit",
                                hv205 %in% c(42,43,44) ~ "Dry/Bucket Toilet",
                                hv205 %in% c(14,15,41,96)~"Others",
                                hv205 == 31~"No Toilet"))%>%
-crosstab_3way(x=hv024, y=toilet_type,z=hv025, weight = shweight)
+crosstab(x=hv024, y=toilet_type, weight = shweight,format = "wide")%>%
+  mutate(hv024 = fct_reorder(hv024, desc(`No Toilet`)))%>%
+  melt(id="hv024")%>%
+  filter(variable!="n")%>%
+  ggplot(mapping = aes(hv024,y=value,group=variable))+
+  geom_col(aes(fill=variable))+
+  xlab("State")+
+  ylab("Percent Households")+
+  ggtitle("Type of Toilet")+
+  geom_text(mapping=aes(label = round(value,1)),angle=0,
+              position = position_stack(vjust=0.5),size=4,color="black")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+
+```{r}
+
+#State and Urban/Rural Toilet type
+nfhs5_hh_wash%>%
+  mutate(toilet_type=case_when(hv205 == 11 ~ "Sewer",
+                               hv205 == 12 ~ "Septic",
+                               hv205 %in% c(13,21,22,23) ~ "Pit",
+                               hv205 %in% c(42,43,44) ~ "Dry/Bucket Toilet",
+                               hv205 %in% c(14,15,41,96)~"Others",
+                               hv205 == 31~"No Toilet"),
+          wealth_group=case_when(hv270 %in% c(1,2)~"Poor",
+                                hv270 %in% c(3)~"Middler",
+                                hv270 %in% c(4,5)~"Rich"))%>%
+crosstab_3way(x=wealth_group, y=toilet_type,z=hv025, weight = hv005,unwt_n = TRUE)%>%
+  filter(hv025=="urban")
 ```
 
 
@@ -67,6 +95,8 @@ crosstab_3way(x=hv024, y=toilet_type,z=sv270us, weight = shweight)
 
 ```
 
+
+
 ```{r}
 
 nfhs6_hh_wash%>%
@@ -79,6 +109,7 @@ nfhs6_hh_wash%>%
                                hv205 == 31~"No Toilet"))%>%
 crosstab_3way(x=hv024, y=sh45,z=toilet_type, weight = shweight,unwt_n = TRUE)
 ```
+
 
 
 ```{r}
